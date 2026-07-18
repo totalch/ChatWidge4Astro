@@ -1,0 +1,91 @@
+# worker/wrangler.toml
+name = "dogbro-chat-worker"
+main = "index.js"
+compatibility_date = "2024-09-23"
+
+# Workers AI — embedding at the edge (free)
+[ai]
+binding = "AI"
+
+# Vectorize — vector storage + metadata (no external DB needed)
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "dogbro-docs"
+
+[vars]
+ALLOWED_ORIGIN = "https://dogbro.com"   # ← change to your actual domain
+
+# Secrets — set via CLI, never commit to git:
+# wrangler secret put GEMINI_API_KEY
+# wrangler secret put ALLOWED_ORIGIN   (optional, or keep in [vars])
+
+
+# ════════════════════════════════════════════════════════════════
+#  STEP 0 — Create the Vectorize index (once only)
+# ════════════════════════════════════════════════════════════════
+#
+#   wrangler vectorize create dogbro-docs \
+#     --dimensions=768 \
+#     --metric=cosine
+#
+#   768 matches bge-base-en-v1.5 output dimensions.
+#   cosine similarity is standard for semantic search.
+#
+# ════════════════════════════════════════════════════════════════
+#  STEP 1 — Ingest documents (run locally, re-run on doc updates)
+# ════════════════════════════════════════════════════════════════
+#
+#   Place your txt / pdf files in the docs/ folder, then:
+#
+#   npm install pdf-parse
+#   export CF_ACCOUNT_ID=<your-account-id>   # wrangler whoami
+#   export CF_API_TOKEN=<your-api-token>     # Workers AI: Edit permission
+#   node scripts/ingest.mjs
+#
+#   Text is stored in Vectorize metadata — no Supabase / D1 / KV needed.
+#   Upsert is idempotent: re-running overwrites changed chunks safely.
+#
+# ════════════════════════════════════════════════════════════════
+#  STEP 2 — Deploy the Worker
+# ════════════════════════════════════════════════════════════════
+#
+#   cd worker/
+#   wrangler secret put GEMINI_API_KEY   # get free key: aistudio.google.com/apikey
+#   wrangler deploy
+#   → note your Worker URL, e.g. https://dogbro-chat-worker.xxx.workers.dev
+#
+# ════════════════════════════════════════════════════════════════
+#  STEP 3 — Astro environment variable
+# ════════════════════════════════════════════════════════════════
+#
+#   .env (local):
+#     PUBLIC_WORKER_URL=https://dogbro-chat-worker.xxx.workers.dev
+#
+#   Cloudflare Pages → Settings → Environment variables → add same key
+#
+# ════════════════════════════════════════════════════════════════
+#  STEP 4 — Add ChatWidget to Astro page
+# ════════════════════════════════════════════════════════════════
+#
+#   ---
+#   import ChatWidget from '../components/ChatWidget.astro'
+#   ---
+#   <body>
+#     <!-- page content -->
+#     <ChatWidget />
+#   </body>
+#
+# ════════════════════════════════════════════════════════════════
+#  COST BREAKDOWN (monthly)
+# ════════════════════════════════════════════════════════════════
+#
+#   Cloudflare Workers free tier     100,000 req/day      → $0
+#   Cloudflare Workers AI            free (bge-base-en)   → $0
+#   Cloudflare Vectorize free tier   5M stored dims/month → $0
+#   Gemini 2.0 Flash free tier       1,500 req/day        → $0
+#   ────────────────────────────────────────────────────────────
+#   Total                                                 → $0/month ✅
+#
+#   Your docs/: small txt/PDF, well within all free limits.
+#   No external database. Zero monthly cost.
+#

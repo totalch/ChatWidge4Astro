@@ -1,0 +1,372 @@
+---
+// src/components/ChatWidget.astro
+// Usage: import ChatWidget from '../components/ChatWidget.astro'
+//        place <ChatWidget /> at the bottom of your <body>
+
+const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL
+---
+
+<div id="dogbro-chat" aria-label="AI Support" role="complementary">
+  <!-- Toggle button -->
+  <button
+    id="chat-toggle"
+    aria-label="Open AI assistant"
+    aria-expanded="false"
+    aria-controls="chat-panel"
+  >
+    <svg id="icon-open" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+    <svg id="icon-close" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:none">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+
+  <!-- Chat panel -->
+  <div id="chat-panel" role="dialog" aria-label="Dogbro AI Assistant" hidden>
+    <header id="chat-header">
+      <div id="chat-brand">
+        <span id="chat-status-dot" aria-hidden="true"></span>
+        <span id="chat-title">Dogbro AI</span>
+      </div>
+      <span id="chat-subtitle">Business Assistant</span>
+    </header>
+
+    <div id="chat-messages" role="log" aria-live="polite" aria-label="Conversation">
+      <div class="msg assistant">
+        <div class="bubble">
+          Hello! I'm Dogbro's AI assistant. How can I help you today?
+        </div>
+      </div>
+    </div>
+
+    <div id="chat-input-area">
+      <textarea
+        id="chat-input"
+        placeholder="Ask a question…"
+        rows="1"
+        aria-label="Your message"
+        maxlength="500"
+      ></textarea>
+      <button id="chat-send" aria-label="Send message" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* ── Design tokens — dark editorial-luxe ────────────────────── */
+  #dogbro-chat {
+    --c-bg:      #0e0e0e;
+    --c-surface: #161616;
+    --c-border:  #2a2a2a;
+    --c-accent:  #c9a96e;
+    --c-text:    #e8e8e8;
+    --c-muted:   #6b6b6b;
+    --r-panel:   12px;
+    --r-bubble:  8px;
+    --shadow:    0 24px 64px rgba(0,0,0,.7), 0 4px 16px rgba(0,0,0,.4);
+    --font:      'Inter', system-ui, sans-serif;
+
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 9999;
+    font-family: var(--font);
+  }
+
+  /* ── Toggle button ───────────────────────────────────────────── */
+  #chat-toggle {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--c-accent);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #0e0e0e;
+    box-shadow: 0 4px 20px rgba(201,169,110,.35);
+    transition: transform .2s ease, box-shadow .2s ease;
+    margin-left: auto;
+  }
+  #chat-toggle:hover {
+    transform: scale(1.06);
+    box-shadow: 0 6px 28px rgba(201,169,110,.5);
+  }
+  #chat-toggle:focus-visible {
+    outline: 2px solid var(--c-accent);
+    outline-offset: 3px;
+  }
+
+  /* ── Panel ───────────────────────────────────────────────────── */
+  #chat-panel {
+    position: absolute;
+    bottom: 64px; right: 0;
+    width: 360px; max-height: 540px;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-panel);
+    box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    animation: slide-up .22s cubic-bezier(.16,1,.3,1);
+  }
+  #chat-panel[hidden] { display: none; }
+
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(12px) scale(.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ── Header ──────────────────────────────────────────────────── */
+  #chat-header {
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--c-border);
+    background: var(--c-bg);
+    flex-shrink: 0;
+  }
+  #chat-brand {
+    display: flex; align-items: center; gap: 7px;
+    margin-bottom: 2px;
+  }
+  #chat-status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 6px rgba(74,222,128,.6);
+    flex-shrink: 0;
+  }
+  #chat-title {
+    font-size: 14px; font-weight: 600;
+    color: var(--c-text); letter-spacing: .02em;
+  }
+  #chat-subtitle {
+    font-size: 11px; color: var(--c-muted);
+    letter-spacing: .06em; text-transform: uppercase;
+    padding-left: 14px;
+  }
+
+  /* ── Messages ────────────────────────────────────────────────── */
+  #chat-messages {
+    flex: 1; overflow-y: auto;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+    scroll-behavior: smooth;
+    background: var(--c-bg);
+  }
+  #chat-messages::-webkit-scrollbar { width: 4px; }
+  #chat-messages::-webkit-scrollbar-track { background: transparent; }
+  #chat-messages::-webkit-scrollbar-thumb {
+    background: var(--c-border); border-radius: 2px;
+  }
+
+  /* ── Bubbles ─────────────────────────────────────────────────── */
+  .msg { display: flex; }
+  .msg.user      { justify-content: flex-end; }
+  .msg.assistant { justify-content: flex-start; }
+
+  .bubble {
+    max-width: 82%;
+    padding: 10px 14px;
+    border-radius: var(--r-bubble);
+    font-size: 13.5px; line-height: 1.65;
+    white-space: pre-wrap; word-break: break-word;
+    border: 1px solid var(--c-border);
+    color: var(--c-text);
+  }
+  .msg.user      .bubble { background: #1e1e1e; border-bottom-right-radius: 2px; }
+  .msg.assistant .bubble { background: #111111; border-bottom-left-radius: 2px; }
+  .msg.error     .bubble {
+    background: rgba(239,68,68,.08);
+    border-color: rgba(239,68,68,.2);
+    color: #f87171; font-size: 13px;
+  }
+
+  /* ── Typing indicator ────────────────────────────────────────── */
+  .typing-dot {
+    display: inline-block;
+    width: 5px; height: 5px; margin: 0 2px;
+    border-radius: 50%; background: var(--c-muted);
+    animation: blink 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: .2s; }
+  .typing-dot:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink {
+    0%,80%,100% { opacity:.2; transform:scale(.8); }
+    40%         { opacity:1;  transform:scale(1); }
+  }
+
+  /* ── Input area ──────────────────────────────────────────────── */
+  #chat-input-area {
+    display: flex; align-items: flex-end; gap: 8px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--c-border);
+    background: var(--c-surface);
+    flex-shrink: 0;
+  }
+  #chat-input {
+    flex: 1;
+    background: var(--c-bg);
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    color: var(--c-text);
+    font-family: var(--font);
+    font-size: 13.5px; line-height: 1.5;
+    padding: 8px 12px;
+    resize: none; max-height: 100px; overflow-y: auto;
+    transition: border-color .15s;
+  }
+  #chat-input::placeholder { color: var(--c-muted); }
+  #chat-input:focus { outline: none; border-color: var(--c-accent); }
+
+  #chat-send {
+    width: 34px; height: 34px; border-radius: 6px;
+    background: var(--c-accent); border: none; cursor: pointer;
+    color: #0e0e0e;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: opacity .15s, transform .15s;
+  }
+  #chat-send:disabled { opacity: .35; cursor: not-allowed; }
+  #chat-send:not(:disabled):hover { opacity: .85; transform: scale(1.05); }
+  #chat-send:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+
+  /* ── Mobile ──────────────────────────────────────────────────── */
+  @media (max-width: 420px) {
+    #dogbro-chat { bottom: 16px; right: 16px; }
+    #chat-panel  { width: calc(100vw - 32px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #chat-panel  { animation: none; }
+    .typing-dot  { animation: none; opacity: .5; }
+  }
+</style>
+
+<script define:vars={{ WORKER_URL }}>
+  const panel     = document.getElementById('chat-panel')
+  const toggle    = document.getElementById('chat-toggle')
+  const iconOpen  = document.getElementById('icon-open')
+  const iconClose = document.getElementById('icon-close')
+  const messages  = document.getElementById('chat-messages')
+  const input     = document.getElementById('chat-input')
+  const sendBtn   = document.getElementById('chat-send')
+
+  const history = []   // multi-turn context sent to Worker
+  let isStreaming = false
+
+  // ── Toggle panel ────────────────────────────────────────────
+  toggle.addEventListener('click', () => {
+    const opening = panel.hidden
+    panel.hidden = !opening
+    toggle.setAttribute('aria-expanded', String(opening))
+    iconOpen.style.display  = opening ? 'none' : ''
+    iconClose.style.display = opening ? '' : 'none'
+    if (opening) setTimeout(() => input.focus(), 50)
+  })
+
+  // ── Textarea auto-height + send button state ─────────────
+  input.addEventListener('input', () => {
+    input.style.height = 'auto'
+    input.style.height = Math.min(input.scrollHeight, 100) + 'px'
+    sendBtn.disabled = !input.value.trim() || isStreaming
+  })
+
+  // Enter sends; Shift+Enter inserts newline
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      if (!sendBtn.disabled) handleSend()
+    }
+  })
+
+  sendBtn.addEventListener('click', handleSend)
+
+  // ── DOM helpers ─────────────────────────────────────────────
+  function appendMessage(role, text) {
+    const wrap   = document.createElement('div')
+    wrap.className = `msg ${role}`
+    const bubble = document.createElement('div')
+    bubble.className = 'bubble'
+    bubble.textContent = text
+    wrap.appendChild(bubble)
+    messages.appendChild(wrap)
+    messages.scrollTop = messages.scrollHeight
+    return bubble
+  }
+
+  function showTyping() {
+    const wrap = document.createElement('div')
+    wrap.className = 'msg assistant'
+    wrap.id = 'typing-indicator'
+    wrap.innerHTML = `<div class="bubble">
+      <span class="typing-dot"></span>
+      <span class="typing-dot"></span>
+      <span class="typing-dot"></span>
+    </div>`
+    messages.appendChild(wrap)
+    messages.scrollTop = messages.scrollHeight
+  }
+
+  function removeTyping() {
+    document.getElementById('typing-indicator')?.remove()
+  }
+
+  // ── Main send flow ───────────────────────────────────────────
+  async function handleSend() {
+    const text = input.value.trim()
+    if (!text || isStreaming) return
+
+    input.value = ''
+    input.style.height = 'auto'
+    sendBtn.disabled = true
+    isStreaming = true
+
+    appendMessage('user', text)
+    history.push({ role: 'user', content: text })
+    showTyping()
+
+    try {
+      const res = await fetch(`${WORKER_URL}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history: history.slice(0, -1) }),
+      })
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+      removeTyping()
+      const bubble = appendMessage('assistant', '')
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder()
+      let fullText  = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        for (const line of decoder.decode(value).split('\n')) {
+          if (!line.startsWith('data: ')) continue
+          const data = line.slice(6).trim()
+          if (data === '[DONE]') break
+          try {
+            const { text: delta } = JSON.parse(data)
+            fullText += delta
+            bubble.textContent = fullText
+            messages.scrollTop = messages.scrollHeight
+          } catch { /* skip */ }
+        }
+      }
+
+      history.push({ role: 'assistant', content: fullText })
+
+    } catch (err) {
+      removeTyping()
+      appendMessage('error', 'Connection failed. Please try again.')
+      console.error('Chat error:', err)
+    } finally {
+      isStreaming = false
+      sendBtn.disabled = !input.value.trim()
+    }
+  }
+</script>
